@@ -1,0 +1,58 @@
+version: "3.3"
+services:
+#    bank_user_service:
+#      build: .
+#      env_file:
+#        - ".env"
+#    volumes:
+#      - bank_user_service_volume:/bank_user_service_volume
+#      ports:
+#        - "${EXTERNAL_SERVER_PORT}:${INTERNAL_SERVER_PORT}"
+#      restart: unless-stopped
+#      deploy:
+#        restart_policy:
+#          condition: on-failure
+#          delay: 5s
+#          max_attempts: 3
+#          window: 120s
+    rabbitmq3:
+      container_name: 'rabbitmq'
+      image: rabbitmq:3.11.2-management
+      environment:
+        - RABBITMQ_DEFAULT_USER=bank_admin
+        - RABBITMQ_DEFAULT_PASS=bank_1234_rabbit
+      ports:
+        # AMQP protocol port
+        - '5672:5672'
+        # HTTP management UI
+        - '15672:15672'
+      deploy:
+        restart_policy:
+          condition: on-failure
+          delay: 5s
+          max_attempts: 3
+          window: 120s
+
+#    postgres:
+#      image: postgres:15.0
+#      volumes:
+#        - postgres_volume:/var/lib/postgres
+#      env_file:
+#        - ".env"
+#      ports:
+#        - "33061:3306"
+#      healthcheck:
+#        test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+#        timeout: 20s
+#        retries: 10
+#      deploy:
+#        restart_policy:
+#          condition: on-failure
+#          delay: 5s
+#          max_attempts: 3
+#          window: 120s
+
+#
+#volumes:
+#  postgres_volume:
+#  bank_user_service_volume:
