@@ -5,8 +5,11 @@ from sqlalchemy import BigInteger, Column, String
 from common.base_model import BaseModelInterface
 
 
-class CityModel(BaseModelInterface):
-    __tablename__ = 'city_model'
+class PermissionTypeModel(BaseModelInterface):
+    __tablename__ = 'permission_type_model'
 
     id = Column(BigInteger, primary_key=True)
-    city = Column(String(256))
+
+    permission_type = Column(String(256))
+
+    priority = Column(BigInteger)

@@ -1,17 +1,22 @@
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy.orm import registry, DeclarativeMeta
+
+from common.model_interface import ModelInterface
 
 mapper_registry = registry()
 
 
-class BaseModelInterface(metaclass=DeclarativeMeta):
+class BaseModelInterface(metaclass=DeclarativeMeta, ModelInterface):
     __abstract__ = True
 
     registry = mapper_registry
     metadata = mapper_registry.metadata
 
     __init__ = mapper_registry.constructor
+
+
+_BMI = TypeVar('_BMI', bound=BaseModelInterface)
 
 
 def get_clss(module: Any) -> list[type]:

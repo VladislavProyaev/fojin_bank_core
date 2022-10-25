@@ -6,6 +6,7 @@ from uvicorn import Config, Server
 from api.app import app
 from api.base_settings import base_settings
 from api.module_settings import event_loop
+from api.support_functions.check_permission_types import check_permission_types
 from services.rabbit_mq.rabbit import consume, rpc_middleware
 
 app.add_middleware(SessionMiddleware, secret_key=base_settings.jwt_secret)
@@ -20,6 +21,7 @@ async def shutdown_event():
 @app.on_event('startup')
 async def startup_event():
     asyncio.ensure_future(consume(event_loop))
+    check_permission_types()
 
 
 config = Config(

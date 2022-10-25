@@ -2,24 +2,40 @@ import time
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from common.constants.sql import SQLConstant
 from settings import settings
 
 
-class SQL:
-    def __init__(self):
-        self._max_connect_tries = 5
-        self._max_tries_after_fail = 3
-        self._sleep_after_try = 30
-        self._client = None
-        self._session = None
+class SessionAreNotAvailable(Exception):
+    ...
 
-        self._create_engine()
-        self._create_session()
+
+class SQL:
+    __slots__ = ('__client', '__session')
+
+    def __init__(self):
+        self.__client: Engine | None = None
+        self.__session: Session | None = None
+
+    @property
+    def client(self) -> Engine:
+        if self.__client is None:
+            self._create_engine()
+
+        return self.__client
+
+    @property
+    def session(self) -> Session:
+        if self.__session is None:
+            self._create_session()
+
+        return self.__session
 
     def _create_engine(self) -> None:
-        self._client = create_engine(
+        self.__client = create_engine(
             settings.sql_connection_string,
             echo=False,
             pool_pre_ping=True
@@ -29,33 +45,27 @@ class SQL:
         try_restarts_after_fail = 0
 
         def _attempt_create_session(tries: int):
-            for _ in range(self._max_connect_tries):
+            for _ in range(SQLConstant.MAX_CONNECT_TRIES):
                 try:
-                    self._session = Session(self.client)
+                    self.__session = Session(self.client)
                     return
-                except Exception:
-                    self._session = None
-                    time.sleep(self._sleep_after_try)
+                except SQLAlchemyError:
+                    time.sleep(SQLConstant.SECONDS_SLEEP_AFTER_TRY)
 
-            if self.session is None and tries != self._max_tries_after_fail:
+            if (
+                self.__session is None
+                and tries != SQLConstant.MAX_TRIES_AFTER_FAIL
+            ):
                 tries += 1
-                time.sleep(self._sleep_after_try)
+                time.sleep(SQLConstant.SECONDS_SLEEP_AFTER_TRY)
                 _attempt_create_session(tries)
 
         _attempt_create_session(try_restarts_after_fail)
-        if self.session is None:
-            raise Exception(
+        if self.__session is None:
+            raise SessionAreNotAvailable(
                 'SQL session are not available after '
-                f'{self._max_tries_after_fail} tries. Bot loop is closed!'
+                f'{SQLConstant.MAX_TRIES_AFTER_FAIL} tries.'
             )
-
-    @property
-    def client(self) -> Engine:
-        return self._client
-
-    @property
-    def session(self) -> Session:
-        return self._session
 
 
 sql = SQL()
