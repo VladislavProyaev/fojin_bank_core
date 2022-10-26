@@ -42,9 +42,6 @@ class Permissions(BaseConstant):
     MODERATOR = Permission(
         PermissionTypes.MODERATOR.permission,
         [
-            PermissionActions.CREATE_TRANSFER,
-            PermissionActions.CREATE_ACCOUNT,
-            PermissionActions.VIEW_PROFILE,
             PermissionActions.VIEW_ALL_PROFILES
         ]
     )
@@ -52,9 +49,6 @@ class Permissions(BaseConstant):
     ADMINISTRATOR = Permission(
         PermissionTypes.ADMINISTRATOR.permission,
         [
-            PermissionActions.CREATE_TRANSFER,
-            PermissionActions.CREATE_ACCOUNT,
-            PermissionActions.VIEW_PROFILE,
             PermissionActions.VIEW_ALL_PROFILES,
             PermissionActions.ASSIGN_ADMINISTRATOR
         ]

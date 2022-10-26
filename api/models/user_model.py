@@ -22,4 +22,6 @@ class UserModel(BaseModelInterface):
     )
     city = relationship('CityModel', uselist=False, backref='cities')
 
+    hashed_password = Column(String())
+
     available = Column(Boolean, default=True)
