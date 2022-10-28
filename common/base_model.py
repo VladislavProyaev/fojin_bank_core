@@ -30,9 +30,11 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
 
     @staticmethod
     def transaction(function: Callable) -> Callable:
-        def make_transaction(*args, **kwargs) -> None:
+        def make_transaction(*args, **kwargs) -> Generic[_BMI]:
             with sql.session.begin(subtransactions=True):
-                function(*args, **kwargs)
+                instance = function(*args, **kwargs)
+            sql.protected_commit()
+            return instance
 
         return make_transaction
 

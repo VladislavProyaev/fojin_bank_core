@@ -11,5 +11,3 @@ class PermissionTypeModel(BaseModelInterface):
     id = Column(BigInteger, primary_key=True)
 
     permission_type = Column(String(256))
-
-    priority = Column(BigInteger)

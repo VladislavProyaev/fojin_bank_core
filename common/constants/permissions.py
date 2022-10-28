@@ -9,16 +9,10 @@ class Permission:
     permission_actions: list[str]
 
 
-@dataclass
-class PermissionType(BaseConstant):
-    permission: str
-    priority: int
-
-
 class PermissionTypes(BaseConstant):
-    CLIENT = PermissionType('client', 0)
-    MODERATOR = PermissionType('moderator', 1)
-    ADMINISTRATOR = PermissionType('administrator', 2)
+    CLIENT = 'client'
+    MODERATOR = 'moderator'
+    ADMINISTRATOR = 'administrator'
 
 
 class PermissionActions(BaseConstant):
@@ -31,7 +25,7 @@ class PermissionActions(BaseConstant):
 
 class Permissions(BaseConstant):
     CLIENT = Permission(
-        PermissionTypes.CLIENT.permission,
+        PermissionTypes.CLIENT,
         [
             PermissionActions.CREATE_TRANSFER,
             PermissionActions.CREATE_ACCOUNT,
@@ -40,14 +34,14 @@ class Permissions(BaseConstant):
     )
 
     MODERATOR = Permission(
-        PermissionTypes.MODERATOR.permission,
+        PermissionTypes.MODERATOR,
         [
             PermissionActions.VIEW_ALL_PROFILES
         ]
     )
 
     ADMINISTRATOR = Permission(
-        PermissionTypes.ADMINISTRATOR.permission,
+        PermissionTypes.ADMINISTRATOR,
         [
             PermissionActions.VIEW_ALL_PROFILES,
             PermissionActions.ASSIGN_ADMINISTRATOR

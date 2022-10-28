@@ -10,3 +10,6 @@ alembic~=1.8.1
 psycopg2-binary~=2.9.4
 aio-pika~=8.2.4
 python-multipart~=0.0.5
+aiormq~=6.4.2
+python-jose[cryptography]~=3.3.0
+passlib[bcrypt]~=1.7.4

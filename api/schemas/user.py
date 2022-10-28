@@ -6,9 +6,23 @@ from pydantic import BaseModel, UUID4, Field, validator
 class UserCreate(BaseModel):
     name: str
     surname: str
-    phone: int
+    phone: str
     city: str
     password: str
+    permission: str
+
+
+class AuthorizedUser(BaseModel):
+    id: int
+    name: str
+    surname: str
+    phone: str
+    city_id: int
+    password: str
+    available: bool
+
+    class Config:
+        orm_mode = True
 
 
 class TokenBase(BaseModel):
