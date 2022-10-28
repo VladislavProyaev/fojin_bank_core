@@ -17,9 +17,9 @@ class Depends:
     def __init__(self, depends_function: Callable) -> None:
         self.depends_function = depends_function
 
-    def __call__(self, function: Callable):
+    def __call__(self, function: Callable) -> Callable:
         @wraps(function)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> None:
             self.depends_function(*args, **kwargs)
             function(*args, **kwargs)
 
