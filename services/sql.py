@@ -1,6 +1,5 @@
 import time
 
-import loguru
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -67,13 +66,6 @@ class SQL:
                 'SQL session are not available after '
                 f'{SQLConstant.MAX_TRIES_AFTER_FAIL} tries.'
             )
-
-    def protected_commit(self) -> None:
-        try:
-            self.session.commit()
-        except Exception as exception:
-            loguru.logger.error(str(exception))
-            self.session.rollback()
 
 
 sql = SQL()

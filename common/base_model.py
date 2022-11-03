@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, Callable, Generic
+from typing import Any, TypeVar, Generic
 
 from sqlalchemy.orm import registry, DeclarativeMeta
 
@@ -29,16 +29,6 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
         mapper_registry.constructor(self, **kwargs)
 
     @staticmethod
-    def transaction(function: Callable) -> Callable:
-        def make_transaction(*args, **kwargs) -> Generic[_BMI]:
-            with sql.session.begin(subtransactions=True):
-                instance = function(*args, **kwargs)
-            sql.protected_commit()
-            return instance
-
-        return make_transaction
-
-    @staticmethod
     def generate_filters(cls, **kwargs) -> list[bool]:
         return [
             getattr(cls, attr) == value for attr, value in kwargs.items()
@@ -52,7 +42,6 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
         return instance
 
     @classmethod
-    @transaction
     def get_or_create(cls, **kwargs) -> Generic[_BMI]:
         instance = cls.get(**kwargs)
 
@@ -62,7 +51,6 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
 
         return instance
 
-    @transaction
     def delete(self) -> None:
         if hasattr(self, ModelStatus.attr_name):
             setattr(self, ModelStatus.attr_name, ModelStatus.state)
@@ -72,7 +60,6 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
                 getattr(self_type, 'id') == getattr(self, 'id')
             ).delete()
 
-    @transaction
     def restore(self) -> None:
         if hasattr(self, ModelStatus.attr_name):
             if getattr(self, ModelStatus.attr_name) is ModelStatus.state:

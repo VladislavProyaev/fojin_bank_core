@@ -1,10 +1,11 @@
-import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import ClassVar, Literal
 
 from aio_pika import IncomingMessage
 from jose import jwt
+from jose.exceptions import JWTClaimsError, JWTError
+from jwt import ExpiredSignatureError
 from passlib.context import CryptContext
 
 from api import UserModel
@@ -21,18 +22,26 @@ class JWTManager:
     @dataclass
     class ParsedHeader:
         message: IncomingMessage
+        is_valid: bool = False
+        access_token: str | None = None
 
         def __post_init__(self) -> None:
             headers = self.message.headers
-            self.header = headers.get('Authorization')
+            authorization = headers.get('Authorization')
+            self.refresh_token = headers.get('refresh')
 
-            if self.header is not None:
-                self.token_type, self.access_token = self.header.split(' ')
-            else:
-                self.token_type, self.access_token = (None, None)
+            if authorization is not None:
+                token_type, self.access_token = authorization.split(' ')
+                if self.refresh_token is not None and token_type == 'Bearer':
+                    self.is_valid = True
 
     def __init__(self) -> None:
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    def verify_password(
+        self, plain_password: str | bytes, hashed_password: str | bytes
+    ) -> bool:
+        return self.pwd_context.verify(plain_password, hashed_password)
 
     def get_password_hash(self, password: str) -> str:
         return self.pwd_context.hash(password)
@@ -85,29 +94,65 @@ class JWTManager:
 
         return token
 
-    def __validate_access_token(
+    def __validate_token(
         self, message: IncomingMessage
     ) -> IncomingMessage:
         header = self.ParsedHeader(message)
-        if header.header is None or header.token_type != 'Bearer':
+        if not header.is_valid:
             raise exception
+
+        datetime_now = datetime.now(timezone.utc)
+        access_token = self.encode_token(message)
+        if access_token['exp'] < datetime_now:
+            refresh_token = self.encode_token(message, TokenTypes.REFRESH)
+            if refresh_token['exp'] < datetime_now:
+                raise Exception('Re-authorization required!')
+            raise Exception('Access token needs to be updated')
 
         return message
 
-    jwt_required: ClassVar[IncomingMessage] = __validate_access_token
+    jwt_required: ClassVar[IncomingMessage] = __validate_token
 
-    def encode_access_token(self, message: IncomingMessage) -> str:
+    def encode_token(
+        self,
+        message: IncomingMessage,
+        token_type: Literal['Access', 'Refresh'] = 'Access'
+    ) -> dict:
         header = self.ParsedHeader(message)
+        if token_type == 'Access':
+            token = header.access_token
+            access_token = None
+        elif token_type == 'Refresh':
+            token = header.refresh_token
+            access_token = header.access_token
+        else:
+            raise exception
 
-        payload = jwt.decode(
-            header.access_token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm]
-        )
-        payload.pop('exp', None)
-        payload = json.dumps(payload)
+        try:
+            payload = jwt.decode(
+                token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
+                access_token=access_token
+            )
+        except (JWTError, ExpiredSignatureError, JWTClaimsError):
+            raise CoreException(
+                'Incorrect access/refresh tokens. Need to reauthenticate!'
+            )
 
         return payload
+
+    def refresh_token(self, message: IncomingMessage) -> Token:
+        access_token = self.encode_token(message)
+        user_model = UserModel.get(
+            name=access_token['name'],
+            surname=access_token['surname'],
+            phone=access_token['phone'],
+            password=access_token['password']
+        )
+        token = self.create_token(user_model)
+
+        return token
 
 
 jwt_manager = JWTManager()

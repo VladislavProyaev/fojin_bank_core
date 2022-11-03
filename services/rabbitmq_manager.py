@@ -1,28 +1,38 @@
 import asyncio
+import json
+from dataclasses import dataclass
 from functools import partial
 from typing import Callable, Any
 
-from aio_pika import connect_robust, IncomingMessage
+import loguru
+from aio_pika import connect_robust, IncomingMessage, Message, DeliveryMode
 from aio_pika.patterns import RPC
 from aiormq.tools import awaitable
 from fastapi import Request, Response
 
-from common.rabbit_method import RabbitMQMethod
 from settings import settings
+
+
+@dataclass(slots=True)
+class RabbitMQMethod:
+    method_name: str
+    method_function: Callable
 
 
 class RabbitMQ:
     __slots__ = (
         '__connection_string',
         '__loop',
-        '__rpc'
+        '__rpc',
+        '__service_name'
     )
 
-    def __init__(self, connection_string: str) -> None:
+    def __init__(self, connection_string: str, service_name: str) -> None:
         """
         RPC: Remote Procedure Call helper.
         """
         self.__connection_string = connection_string
+        self.__service_name: str = service_name
         self.__loop: asyncio.AbstractEventLoop | None = None
         self.__rpc: RPC | None = None
 
@@ -36,23 +46,25 @@ class RabbitMQ:
         connection = await connect_robust(
             settings.ampq_connection_string, loop=loop
         )
+
         channel = await connection.channel()
         rpc = await RPC.create(channel)
         self.__rpc = rpc
 
         for method in methods:
-            await self.register(
+            await self.__register(
                 rpc,
                 method.method_name,
                 method.method_function,
                 auto_delete=True
             )
 
-    async def register(
+    async def __register(
         self, rpc: RPC, method_name: str, func: Callable, **kwargs: Any
     ) -> Any:
+        method_name = 'core_' + method_name
         arguments = kwargs.pop("arguments", {})
-        arguments.update({"x-dead-letter-exchange": rpc.DLX_NAME})
+        arguments.update({"x-dead-letter-exchange": 'core'})
 
         kwargs["arguments"] = arguments
 
@@ -67,24 +79,33 @@ class RabbitMQ:
             )
 
         rpc.consumer_tags[func] = await queue.consume(
-            partial(self.on_call_message, method_name),
+            partial(self.__on_call_message, method_name),
         )
 
         rpc.routes[method_name] = awaitable(func)
         rpc.queues[func] = queue
 
-    async def on_call_message(
+    async def __on_call_message(
         self, method_name: str, message: IncomingMessage,
     ) -> None:
         method = self.__rpc.routes.get(method_name)
         if method is None:
             return
 
-        result = await method(message)
-        if result is not None:
-            method = self.__rpc.routes.get(message.reply_to)
-            if method is None:
-                return
+        try:
+            result = await method(message)
+            result_message = {'status': True, 'answer': result}
+        except Exception as exception:
+            result_message = {'status': False, 'error': str(exception)}
+
+        if message.reply_to is not None:
+            result_message = json.dumps(result_message).encode('utf-8')
+            new_message = Message(
+                result_message, delivery_mode=DeliveryMode.NOT_PERSISTENT
+            )
+            await self.__rpc.channel.default_exchange.publish(
+                new_message, message.reply_to
+            )
 
     async def rpc_middleware(
         self, request: Request, call_next: Callable
@@ -96,10 +117,11 @@ class RabbitMQ:
             channel = await connection.channel()
             request.state.rpc = await RPC.create(channel)
             response = await call_next(request)
-        except Exception:
+        except Exception as exception:
             response = Response("Internal server error", status_code=500)
+            loguru.logger.exception(str(exception))
 
         return response
 
 
-rabbit_mq = RabbitMQ(settings.ampq_connection_string)
+rabbit_mq = RabbitMQ(settings.ampq_connection_string, settings.service_name)

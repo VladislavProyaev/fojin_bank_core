@@ -9,6 +9,7 @@ dotenv.load_dotenv()
 
 
 class Settings(pydantic.BaseSettings):
+    service_name: str = 'core'
     external_server_port: int
     external_server_address: str
 

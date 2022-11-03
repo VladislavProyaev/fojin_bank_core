@@ -12,6 +12,13 @@ class UserCreate(BaseModel):
     permission: str
 
 
+class UserAuthorization(BaseModel):
+    password: str
+    name: str | None = None
+    surname: str | None = None
+    phone: str | None = None
+
+
 class AuthorizedUser(BaseModel):
     id: int
     name: str
