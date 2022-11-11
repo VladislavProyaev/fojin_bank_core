@@ -13,3 +13,4 @@ python-multipart~=0.0.5
 aiormq~=6.4.2
 python-jose[cryptography]~=3.3.0
 passlib[bcrypt]~=1.7.4
+pytest==7.2.0
