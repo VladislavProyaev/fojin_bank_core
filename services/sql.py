@@ -6,7 +6,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from common.constants.sql import SQLConstant
-from settings import settings
 
 
 class SessionAreNotAvailable(Exception):
@@ -14,9 +13,14 @@ class SessionAreNotAvailable(Exception):
 
 
 class SQL:
-    __slots__ = ('__client', '__session')
+    __slots__ = (
+        '__connection_string',
+        '__client',
+        '__session'
+    )
 
-    def __init__(self):
+    def __init__(self, connection_string: str) -> None:
+        self.__connection_string = connection_string
         self.__client: Engine | None = None
         self.__session: Session | None = None
 
@@ -36,7 +40,7 @@ class SQL:
 
     def _create_engine(self) -> None:
         self.__client = create_engine(
-            settings.sql_connection_string,
+            self.__connection_string,
             echo=False,
             pool_pre_ping=True
         )
@@ -66,6 +70,3 @@ class SQL:
                 'SQL session are not available after '
                 f'{SQLConstant.MAX_TRIES_AFTER_FAIL} tries.'
             )
-
-
-sql = SQL()

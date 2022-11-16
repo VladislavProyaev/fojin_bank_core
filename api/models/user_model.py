@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, Column, String, ForeignKey, UniqueConstraint
+from sqlalchemy import BigInteger, Column, String, ForeignKey, \
+    UniqueConstraint, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import Boolean
 
@@ -14,7 +15,7 @@ class UserModel(BaseModelInterface):
         UniqueConstraint('name', 'surname', name='unique_username'),
     )
 
-    id = Column(BigInteger, primary_key=True)
+    id = Column(Integer, primary_key=True)
 
     name = Column(String(256))
     surname = Column(String(256))

@@ -12,5 +12,5 @@ def initialize_permission_types():
         with BaseManager(sql):
             for permission_type in PermissionTypes.values():
                 PermissionTypeModel.get_or_create(
-                    permission_type=permission_type
+                    sql, permission_type=permission_type
                 )
