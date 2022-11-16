@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import traceback
+from typing import TYPE_CHECKING
 
 import loguru
 
-from services.sql import SQL
+if TYPE_CHECKING:
+    from services.sql import SQL
 
 
 class BaseManager:
@@ -11,8 +15,12 @@ class BaseManager:
     def __init__(self, sql: SQL) -> None:
         self.__sql = sql
 
+    @property
+    def sql(self) -> SQL:
+        return self.__sql
+
     def __enter__(self):
-        self.__sql.session.begin()
+        self.__sql.session.begin_nested()
         return self
 
     def __exit__(
@@ -23,6 +31,6 @@ class BaseManager:
     ):
         if not exception_value:
             self.__sql.session.commit()
-            loguru.logger.exception(str(exception_value))
         else:
             self.__sql.session.rollback()
+            loguru.logger.exception(str(exception_value))

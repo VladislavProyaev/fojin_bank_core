@@ -6,11 +6,10 @@ from typing import Callable, Any
 
 import loguru
 from aio_pika import connect_robust, IncomingMessage, Message, DeliveryMode
+from aio_pika.abc import AbstractRobustConnection
 from aio_pika.patterns import RPC
 from aiormq.tools import awaitable
 from fastapi import Request, Response
-
-from settings import settings
 
 
 @dataclass(slots=True)
@@ -24,17 +23,26 @@ class RabbitMQ:
         '__connection_string',
         '__loop',
         '__rpc',
+        '__connection',
         '__service_name'
     )
 
-    def __init__(self, connection_string: str, service_name: str) -> None:
-        """
-        RPC: Remote Procedure Call helper.
-        """
+    def __init__(
+        self, connection_string: str, service_name: str
+    ) -> None:
         self.__connection_string = connection_string
         self.__service_name: str = service_name
         self.__loop: asyncio.AbstractEventLoop | None = None
+        self.__connection: AbstractRobustConnection | None = None
         self.__rpc: RPC | None = None
+
+    @property
+    def connection(self) -> AbstractRobustConnection | None:
+        return self.__connection
+
+    @property
+    def rpc(self) -> RPC | None:
+        return self.__rpc
 
     async def connect(
         self,
@@ -43,12 +51,11 @@ class RabbitMQ:
     ) -> None:
         self.__loop = loop
 
-        connection = await connect_robust(
-            settings.ampq_connection_string, loop=loop
-        )
-
+        connection = await connect_robust(self.__connection_string, loop=loop)
         channel = await connection.channel()
         rpc = await RPC.create(channel)
+
+        self.__connection = connection
         self.__rpc = rpc
 
         for method in methods:
@@ -62,9 +69,9 @@ class RabbitMQ:
     async def __register(
         self, rpc: RPC, method_name: str, func: Callable, **kwargs: Any
     ) -> Any:
-        method_name = 'core_' + method_name
+        method_name = self.__service_name + method_name
         arguments = kwargs.pop("arguments", {})
-        arguments.update({"x-dead-letter-exchange": 'core'})
+        arguments.update({"x-dead-letter-exchange": self.__service_name})
 
         kwargs["arguments"] = arguments
 
@@ -112,7 +119,7 @@ class RabbitMQ:
     ) -> Any:
         try:
             connection = await connect_robust(
-                settings.ampq_connection_string, loop=self.__loop
+                self.__connection_string, loop=self.__loop
             )
             channel = await connection.channel()
             request.state.rpc = await RPC.create(channel)
@@ -122,6 +129,3 @@ class RabbitMQ:
             loguru.logger.exception(str(exception))
 
         return response
-
-
-rabbit_mq = RabbitMQ(settings.ampq_connection_string, settings.service_name)

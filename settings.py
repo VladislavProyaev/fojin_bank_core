@@ -1,5 +1,3 @@
-import re
-import socket
 from datetime import timedelta
 
 import dotenv
@@ -25,24 +23,18 @@ class Settings(pydantic.BaseSettings):
     docker_files_root: str
 
     run_alembic: bool
-    sql_connection_string: str
 
-    @pydantic.validator('sql_connection_string')
-    def resolve_host(cls, v: str):
-        host_regex = (
-            r'(?:\@)((\w+)|(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b)+))(?:\:)'
-        )
-        word_regex = r'\w+'
+    sql_dialect: str
+    sql_user: str
+    sql_password: str
+    sql_host: str
+    sql_port: str
+    sql_database: str
 
-        host = re.search(host_regex, v).group(1)
-
-        if re.match(word_regex, host):
-            host = socket.gethostbyname(host)
-
-        connection_string = re.sub(host_regex, '@{0}:'.format(host), v)
-        return connection_string
-
-    ampq_connection_string: str
+    amqp_user: str
+    amqp_password: str
+    amqp_host: str
+    amqp_port: int
 
     alembic_debug: bool = True
     auto_apply_migrations: bool = True

@@ -38,7 +38,8 @@ def user_handler_action(message: IncomingMessage) -> bool:
     authorized_user = AuthorizedUser.parse_obj(payload)
 
     with UserManager(sql) as transaction:
-        is_action_valid = transaction.is_action_valid(authorized_user, message)
+        action = transaction.get_action(message)
+        is_action_valid = transaction.is_action_valid(authorized_user, action)
 
     return is_action_valid
 

@@ -10,7 +10,8 @@ from api.methods.users import user_registration, user_handler_action, \
 from api.module_settings import event_loop
 from api.support_functions.initialize_permission_types import \
     initialize_permission_types
-from services.rabbitmq_manager import rabbit_mq, RabbitMQMethod
+from services import rabbit_mq
+from services.rabbitmq_manager import RabbitMQMethod
 
 app.add_middleware(SessionMiddleware, secret_key=base_settings.jwt_secret)
 app.middleware('http')(rabbit_mq.rpc_middleware)

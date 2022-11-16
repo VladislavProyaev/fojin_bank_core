@@ -8,11 +8,12 @@ from jose.exceptions import JWTClaimsError, JWTError
 from jwt import ExpiredSignatureError
 from passlib.context import CryptContext
 
-from api import UserModel
+from api.models import UserModel
 from api.schemas.token import Token
 from api.schemas.user import AuthorizedUser
 from common.constants.token_types import TokenTypes
 from common.exceptions import CoreException
+from services import sql
 from settings import settings
 
 exception = CoreException('Could not validate credentials')
@@ -145,6 +146,7 @@ class JWTManager:
     def refresh_token(self, message: IncomingMessage) -> Token:
         access_token = self.encode_token(message)
         user_model = UserModel.get(
+            sql,
             name=access_token['name'],
             surname=access_token['surname'],
             phone=access_token['phone'],

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, Generic
+from typing import Any, TypeVar, Generic, TYPE_CHECKING
 
 from sqlalchemy.orm import registry, DeclarativeMeta
 
 from common.constants.base_constant import BaseConstant
-from services import sql
+
+if TYPE_CHECKING:
+    from services import SQL
 
 mapper_registry = registry()
 
@@ -35,15 +37,15 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
         ]
 
     @classmethod
-    def get(cls, **kwargs) -> Generic[_BMI]:
+    def get(cls, sql: SQL, **kwargs) -> Generic[_BMI]:
         filters = cls.generate_filters(cls, **kwargs)
         instance = sql.session.query(cls).filter(*filters).first()
 
         return instance
 
     @classmethod
-    def get_or_create(cls, **kwargs) -> Generic[_BMI]:
-        instance = cls.get(**kwargs)
+    def get_or_create(cls, sql: SQL, **kwargs) -> Generic[_BMI]:
+        instance = cls.get(sql, **kwargs)
 
         if instance is None:
             instance = cls(**kwargs)
@@ -51,7 +53,7 @@ class BaseModelInterface(metaclass=DeclarativeMeta):
 
         return instance
 
-    def delete(self) -> None:
+    def delete(self, sql: SQL) -> None:
         if hasattr(self, ModelStatus.attr_name):
             setattr(self, ModelStatus.attr_name, ModelStatus.state)
         else:
