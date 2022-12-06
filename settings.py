@@ -8,6 +8,7 @@ dotenv.load_dotenv()
 
 class Settings(pydantic.BaseSettings):
     service_name: str = 'core'
+    core_channel_number: int
     external_server_port: int
     external_server_address: str
 
@@ -16,7 +17,7 @@ class Settings(pydantic.BaseSettings):
 
     jwt_secret_key: str
     jwt_algorithm: str
-    jwt_access_token_expires = timedelta(minutes=15)
+    jwt_access_token_expires = timedelta(weeks=2)
     jwt_refresh_token_expires = timedelta(days=30)
 
     local_files_root: str

@@ -10,6 +10,6 @@ class Depends:
         @wraps(function)
         def wrapper(*args, **kwargs) -> None:
             self.depends_function(*args, **kwargs)
-            function(*args, **kwargs)
+            return function(*args, **kwargs)
 
         return wrapper

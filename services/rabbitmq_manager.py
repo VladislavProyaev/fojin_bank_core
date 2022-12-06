@@ -21,6 +21,7 @@ class RabbitMQMethod:
 class RabbitMQ:
     __slots__ = (
         '__connection_string',
+        '__channel_number',
         '__loop',
         '__rpc',
         '__connection',
@@ -28,10 +29,11 @@ class RabbitMQ:
     )
 
     def __init__(
-        self, connection_string: str, service_name: str
+        self, connection_string: str, service_name: str, channel_number: int
     ) -> None:
         self.__connection_string = connection_string
         self.__service_name: str = service_name
+        self.__channel_number: int = channel_number
         self.__loop: asyncio.AbstractEventLoop | None = None
         self.__connection: AbstractRobustConnection | None = None
         self.__rpc: RPC | None = None
@@ -52,7 +54,7 @@ class RabbitMQ:
         self.__loop = loop
 
         connection = await connect_robust(self.__connection_string, loop=loop)
-        channel = await connection.channel()
+        channel = await connection.channel(self.__channel_number)
         rpc = await RPC.create(channel)
 
         self.__connection = connection
@@ -69,7 +71,7 @@ class RabbitMQ:
     async def __register(
         self, rpc: RPC, method_name: str, func: Callable, **kwargs: Any
     ) -> Any:
-        method_name = self.__service_name + method_name
+        method_name = self.__service_name + '_' + method_name
         arguments = kwargs.pop("arguments", {})
         arguments.update({"x-dead-letter-exchange": self.__service_name})
 
@@ -101,9 +103,17 @@ class RabbitMQ:
 
         try:
             result = await method(message)
-            result_message = {'status': True, 'answer': result}
-        except Exception as exception:
-            result_message = {'status': False, 'error': str(exception)}
+            result_message = {
+                'status': True,
+                'answer': result,
+                'message_id': message.message_id
+            }
+        except BaseException as exception:
+            result_message = {
+                'status': False,
+                'answer': str(exception),
+                'message_id': message.message_id
+            }
 
         if message.reply_to is not None:
             result_message = json.dumps(result_message).encode('utf-8')

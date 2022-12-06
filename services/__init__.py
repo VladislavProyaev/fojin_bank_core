@@ -21,4 +21,6 @@ amqp_connection_string = (
 )
 
 sql = SQL(sql_connection_string)
-rabbit_mq = RabbitMQ(amqp_connection_string, settings.service_name)
+rabbit_mq = RabbitMQ(
+    amqp_connection_string, settings.service_name, settings.core_channel_number
+)

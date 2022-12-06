@@ -6,13 +6,16 @@ from aio_pika import IncomingMessage
 from api.models import PermissionTypeModel, PermissionUserModel, UserModel, \
     CityModel
 from api.schemas.user import UserCreate, AuthorizedUser, UserAuthorization
-from common.base_manager import BaseManager
 from common.constants.permissions import Permissions
 from common.exceptions import UserManagementException, CoreException
+from services import SQL
 from services.jwt_manager import jwt_manager
 
 
-class UserManager(BaseManager):
+class UserManager:
+
+    def __init__(self, sql: SQL) -> None:
+        self.sql = sql
 
     def __create_user(self, user: UserCreate, password: str) -> UserModel:
         city = CityModel.get_or_create(self.sql, city=user.city)
@@ -26,11 +29,14 @@ class UserManager(BaseManager):
             password=password
         )
 
-        permission_type = PermissionTypeModel.get_or_create(
+        permission_type = PermissionTypeModel.get(
             self.sql, permission_type=user.permission
         )
         PermissionUserModel.get_or_create(
-            self.sql, user=user_model, permission_type=permission_type
+            self.sql,
+            user_id=user_model.id,
+            permission_type_id=permission_type.id,
+            available=True
         )
 
         return user_model
@@ -40,7 +46,7 @@ class UserManager(BaseManager):
             self.sql, name=user.name, surname=user.surname
         )
         if user_model is not None:
-            raise UserManagementException('This user already registered"')
+            raise UserManagementException('This user already registered')
 
         all_phones = self.sql.session.query(UserModel.phone).all()
         if user.phone in all_phones:
@@ -60,10 +66,10 @@ class UserManager(BaseManager):
             (user.name is not None and user.surname is None)
             or (user.name is None and user.surname is not None)
             or (
-                user.name is None
-                and user.surname is None
-                and user.phone is None
-            )
+            user.name is None
+            and user.surname is None
+            and user.phone is None
+        )
         ):
             raise UserManagementException(
                 f'Incorrect authorization data: '
@@ -97,8 +103,14 @@ class UserManager(BaseManager):
         )
         return user_model
 
-    @staticmethod
-    def __get_user_permission(user_model: UserModel) -> PermissionUserModel:
+    def __get_user_permission(
+        self,
+        user_model: UserModel
+    ) -> PermissionUserModel:
+        user_permissions = PermissionUserModel.get(
+            self.sql, user_id=user_model.id, available=True
+        )
+        print(user_permissions, 'HERE')
         user_permissions: list[PermissionUserModel] = [
             permission for permission in user_model.permissions
             if permission.available
@@ -122,6 +134,11 @@ class UserManager(BaseManager):
         permission = Permissions.get_permission(
             user_permission.permission_type.permission_type
         )
+        print('------------------------------------------')
+        print(user_permission.permission_type.permission_type)
+        print(action)
+        print(permission.permission_actions)
+        print('------------------------------------------')
 
         if action in permission.permission_actions:
             return True

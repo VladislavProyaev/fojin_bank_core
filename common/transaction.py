@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from services.sql import SQL
 
 
-class BaseManager:
-    __slots__ = ('__sql',)
+class Transaction:
+    __slots__ = ('__sql', '__savepoint')
 
     def __init__(self, sql: SQL) -> None:
         self.__sql = sql
@@ -20,7 +20,6 @@ class BaseManager:
         return self.__sql
 
     def __enter__(self):
-        self.__sql.session.begin_nested()
         return self
 
     def __exit__(
@@ -33,4 +32,4 @@ class BaseManager:
             self.__sql.session.commit()
         else:
             self.__sql.session.rollback()
-            loguru.logger.exception(str(exception_value))
+            # loguru.logger.exception(str(exception_value))

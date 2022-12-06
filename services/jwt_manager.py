@@ -29,7 +29,7 @@ class JWTManager:
         def __post_init__(self) -> None:
             headers = self.message.headers
             authorization = headers.get('Authorization')
-            self.refresh_token = headers.get('refresh')
+            self.refresh_token = headers.get('refresh_token')
 
             if authorization is not None:
                 token_type, self.access_token = authorization.split(' ')
@@ -102,13 +102,15 @@ class JWTManager:
         if not header.is_valid:
             raise exception
 
-        datetime_now = datetime.now(timezone.utc)
-        access_token = self.encode_token(message)
-        if access_token['exp'] < datetime_now:
-            refresh_token = self.encode_token(message, TokenTypes.REFRESH)
-            if refresh_token['exp'] < datetime_now:
-                raise Exception('Re-authorization required!')
-            raise Exception('Access token needs to be updated')
+        try:
+            self.encode_token(message)
+        except jwt.ExpiredSignatureError:
+            raise exception
+
+        try:
+            self.encode_token(message, TokenTypes.REFRESH)
+        except jwt.ExpiredSignatureError:
+            raise exception
 
         return message
 
