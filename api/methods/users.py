@@ -1,23 +1,16 @@
 from aio_pika import IncomingMessage
-from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException
 
 from api.behavior.user_manager import UserManager
 from api.models import UserModel
 from api.schemas.token import Token
-from api.schemas.user import UserCreate, AuthorizedUser, UserAuthorization
+from api.schemas.user import UserCreate, AuthorizedUser, UserAuthorization, User
 from common.depends import Depends
 from common.transaction import Transaction
 from services import sql
 from services.jwt_manager import jwt_manager
 
-authorization_router = APIRouter(prefix='/admin')
-
-
-class Admin(BaseModel):
-    name: str
-    surname: str
-    password: str
+authorization_router = APIRouter(prefix='/auth')
 
 
 @authorization_router.post(
@@ -26,53 +19,67 @@ class Admin(BaseModel):
     tags=['admin-authorization'],
     description='admin-authorization'
 )
-async def authorization(admin: Admin) -> Response:
+async def authorization(user: User) -> dict[str, str]:
     user_model = UserModel.get(
-        sql, name=admin.name, surname=admin.surname, password=admin.password
+        sql, name=user.name, surname=user.surname
     )
+
     if user_model is None:
-        raise HTTPException(status_code=401, detail='Incorrect Data')
+        raise HTTPException(status_code=401, detail='Incorrect Name/Surname')
 
-    token = jwt_manager.create_token(user_model)
-    access_token = f"{token.token_type} {token.access_token}"
-
-    response = Response()
-    response.set_cookie('refresh_token', token.refresh_token)
-    response.set_cookie('Authorization', access_token)
-
-    return response
-
-
-def user_registration(message: IncomingMessage) -> dict[str, Token | int]:
-    payload = message.body.decode('utf8')
-    user = UserCreate.parse_raw(payload)
-
-    with Transaction(sql) as transaction:
-        user_model = UserManager(transaction.sql).user_registration_handler(
-            user
-        )
+    user_model_password = jwt_manager.verify_password(
+        user.password, user_model.password
+    )
+    if not user_model_password:
+        raise HTTPException(status_code=401, detail='Incorrect Password')
 
     token = jwt_manager.create_token(user_model)
 
     return {
         'access_token': token.access_token,
-        'refresh_token': token.refresh_token,
-        'token_type': token.token_type,
-        'user_id': user_model.id
+        'refresh_token': token.refresh_token
     }
 
 
-def user_authorization(message: IncomingMessage) -> Token:
-    payload = message.body.decode('utf8')
-    user = UserAuthorization.parse_raw(payload)
-
+@authorization_router.post(
+    path='/user/registration',
+    status_code=201,
+    tags=['user-registration'],
+    description='user-registration'
+)
+def registration(user: UserCreate) -> dict[str, str]:
     with Transaction(sql) as transaction:
-        user_model = UserManager(transaction.sql).user_authorization_handler(
-            user
-        )
+        UserManager(transaction.sql).user_registration_handler(user)
+
+    return {'status': 'ok'}
+
+
+@authorization_router.post(
+    path='/user/authorization',
+    status_code=200,
+    tags=['user-authorization'],
+    description='user-authorization'
+)
+def authorization(user: UserAuthorization) -> dict[str, str]:
+    with Transaction(sql) as transaction:
+        t_sql = transaction.sql
+        user_model = UserManager(t_sql).user_authorization_handler(user)
 
     token = jwt_manager.create_token(user_model)
-    return token
+    return {
+        'access_token': token.access_token,
+        'refresh_token': token.refresh_token
+    }
+
+
+def get_user(message: IncomingMessage) -> dict[str, Token | int]:
+    encode_token = jwt_manager.encode_token(message)
+    user_id = encode_token.get('id')
+    with Transaction(sql) as transaction:
+        t_sql = transaction.sql
+        user_model = UserManager(t_sql).get_user(user_id)
+
+    return {'user_id': user_model.id}
 
 
 @Depends(jwt_manager.jwt_required)

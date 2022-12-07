@@ -3,20 +3,24 @@ from datetime import datetime
 from pydantic import BaseModel, UUID4, Field, validator
 
 
+class User(BaseModel):
+    name: str
+    surname: str
+    password: str
+
+
 class UserCreate(BaseModel):
     name: str
     surname: str
     phone: str
     city: str
     password: str
-    permission: str
 
 
 class UserAuthorization(BaseModel):
+    name: str
+    surname: str
     password: str
-    name: str | None = None
-    surname: str | None = None
-    phone: str | None = None
 
 
 class AuthorizedUser(BaseModel):

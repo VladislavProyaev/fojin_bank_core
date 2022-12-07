@@ -11,6 +11,8 @@ from common.exceptions import UserManagementException, CoreException
 from services import SQL
 from services.jwt_manager import jwt_manager
 
+BASE_PERMISSION = Permissions.CLIENT.permission_type
+
 
 class UserManager:
 
@@ -30,7 +32,7 @@ class UserManager:
         )
 
         permission_type = PermissionTypeModel.get(
-            self.sql, permission_type=user.permission
+            self.sql, permission_type=BASE_PERMISSION
         )
         PermissionUserModel.get_or_create(
             self.sql,
@@ -58,31 +60,9 @@ class UserManager:
         return user_model
 
     def user_authorization_handler(self, user: UserAuthorization) -> UserModel:
-        if user.password is None:
-            raise UserManagementException(
-                'Authorization is not possible without a password'
-            )
-        if (
-            (user.name is not None and user.surname is None)
-            or (user.name is None and user.surname is not None)
-            or (
-            user.name is None
-            and user.surname is None
-            and user.phone is None
+        user_model = UserModel.get(
+            self.sql, name=user.name, surname=user.surname
         )
-        ):
-            raise UserManagementException(
-                f'Incorrect authorization data: '
-                f'Name: {user.name} | Surname: {user.surname} '
-                f'| Phone: {user.phone}'
-            )
-
-        if user.phone is not None:
-            user_model = UserModel.get(self.sql, phone=user.phone)
-        else:
-            user_model = UserModel.get(
-                self.sql, name=user.name, surname=user.surname
-            )
 
         if user_model is None:
             raise UserManagementException('The user was not found!')
@@ -101,6 +81,13 @@ class UserManager:
             city_id=authorized_user.city_id,
             password=authorized_user.password
         )
+        return user_model
+
+    def get_user(self, user_id: int) -> UserModel:
+        user_model = UserModel.get(self.sql, id=user_id)
+        if user_model is None:
+            raise Exception('User not found')
+
         return user_model
 
     def __get_user_permission(
@@ -134,12 +121,6 @@ class UserManager:
         permission = Permissions.get_permission(
             user_permission.permission_type.permission_type
         )
-        print('------------------------------------------')
-        print(user_permission.permission_type.permission_type)
-        print(action)
-        print(permission.permission_actions)
-        print('------------------------------------------')
-
         if action in permission.permission_actions:
             return True
 

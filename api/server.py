@@ -5,8 +5,8 @@ from uvicorn import Config, Server
 
 from api.app import app
 from api.base_settings import base_settings
-from api.methods.users import user_registration, user_handler_action, \
-    user_authorization, refresh_access_token
+from api.methods.users import user_handler_action, refresh_access_token, \
+    get_user
 from api.module_settings import event_loop
 from api.support_functions.initialize_permission_types import \
     initialize_permission_types
@@ -25,8 +25,7 @@ async def shutdown_event():
 @app.on_event('startup')
 async def startup_event():
     methods = [
-        RabbitMQMethod('user_registration', user_registration),
-        RabbitMQMethod('user_authorization', user_authorization),
+        RabbitMQMethod('get_user', get_user),
         RabbitMQMethod('user_handler_action', user_handler_action),
         RabbitMQMethod('refresh_access_token', refresh_access_token),
     ]
