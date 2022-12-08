@@ -1,5 +1,6 @@
 import json
 from json import JSONDecodeError
+from typing import Literal
 
 from aio_pika import IncomingMessage
 
@@ -90,14 +91,8 @@ class UserManager:
 
         return user_model
 
-    def __get_user_permission(
-        self,
-        user_model: UserModel
-    ) -> PermissionUserModel:
-        user_permissions = PermissionUserModel.get(
-            self.sql, user_id=user_model.id, available=True
-        )
-        print(user_permissions, 'HERE')
+    @staticmethod
+    def __get_user_permission(user_model: UserModel) -> PermissionUserModel:
         user_permissions: list[PermissionUserModel] = [
             permission for permission in user_model.permissions
             if permission.available
@@ -125,3 +120,78 @@ class UserManager:
             return True
 
         return False
+
+    def is_super_permission(self, authorized_user: AuthorizedUser) -> bool:
+        user_model = self.__get_current_user(authorized_user)
+        user_permission = self.__get_user_permission(user_model)
+        if (
+            user_permission.permission_type.permission_type
+            == Permissions.MODERATOR.permission_type
+            or user_permission.permission_type.permission_type
+            == Permissions.ADMINISTRATOR.permission_type
+        ):
+            return True
+
+        return False
+
+    def user_permission_handler(
+        self, user_model: UserModel, action: Literal['upgrade', 'downgrade']
+    ) -> None:
+        self.admin_checker(user_model)
+        if action == 'upgrade':
+            self.user_permission_upgrade(user_model)
+        elif action == 'downgrade':
+            self.user_permission_downgrade(user_model)
+        else:
+            raise Exception('Unexpected action')
+
+    def admin_checker(self, user_model: UserModel) -> None:
+        permission_type = PermissionTypeModel.get(
+            self.sql, permission_type=Permissions.ADMINISTRATOR.permission_type
+        )
+        user_permission = PermissionUserModel.get(
+            self.sql,
+            user_id=user_model.id,
+            permission_type_id=permission_type.id
+        )
+        if user_permission is not None and user_permission.available:
+            raise Exception(
+                "It is not possible to change the administrator's permission."
+            )
+
+    def user_permission_upgrade(self, user_model: UserModel) -> None:
+        self.user_permission_switcher(
+            user_model, Permissions.CLIENT.permission_type, 'delete'
+        )
+        self.user_permission_switcher(
+            user_model, Permissions.MODERATOR.permission_type, 'restore'
+        )
+
+    def user_permission_downgrade(self, user_model: UserModel) -> None:
+        self.user_permission_switcher(
+            user_model, Permissions.MODERATOR.permission_type, 'delete'
+        )
+        self.user_permission_switcher(
+            user_model, Permissions.CLIENT.permission_type, 'restore'
+        )
+
+    def user_permission_switcher(
+        self,
+        user_model: UserModel,
+        permission_type: str,
+        action: Literal['delete', 'restore']
+    ) -> None:
+        permission_type = PermissionTypeModel.get(
+            self.sql, permission_type=permission_type
+        )
+        user_permission = PermissionUserModel.get_or_create(
+            self.sql,
+            user_id=user_model.id,
+            permission_type_id=permission_type.id
+        )
+        if action == 'delete':
+            user_permission.available = False
+        elif action == 'restore':
+            user_permission.available = True
+        else:
+            raise Exception('Unexpected action')

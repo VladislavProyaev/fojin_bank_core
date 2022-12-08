@@ -33,7 +33,7 @@ class JWTManager:
 
             if authorization is not None:
                 token_type, self.access_token = authorization.split(' ')
-                if self.refresh_token is not None and token_type == 'Bearer':
+                if token_type == 'Bearer':
                     self.is_valid = True
 
     def __init__(self) -> None:
@@ -96,7 +96,7 @@ class JWTManager:
         return token
 
     def __validate_token(
-        self, message: IncomingMessage
+        self, message: IncomingMessage, validate_refresh_token: bool = False
     ) -> IncomingMessage:
         header = self.ParsedHeader(message)
         if not header.is_valid:
@@ -107,10 +107,11 @@ class JWTManager:
         except jwt.ExpiredSignatureError:
             raise exception
 
-        try:
-            self.encode_token(message, TokenTypes.REFRESH)
-        except jwt.ExpiredSignatureError:
-            raise exception
+        if validate_refresh_token:
+            try:
+                self.encode_token(message, TokenTypes.REFRESH)
+            except jwt.ExpiredSignatureError:
+                raise exception
 
         return message
 

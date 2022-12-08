@@ -6,7 +6,7 @@ from uvicorn import Config, Server
 from api.app import app
 from api.base_settings import base_settings
 from api.methods.users import user_handler_action, refresh_access_token, \
-    get_user
+    get_user, user_super_permission
 from api.module_settings import event_loop
 from api.support_functions.initialize_permission_types import \
     initialize_permission_types
@@ -28,6 +28,7 @@ async def startup_event():
         RabbitMQMethod('get_user', get_user),
         RabbitMQMethod('user_handler_action', user_handler_action),
         RabbitMQMethod('refresh_access_token', refresh_access_token),
+        RabbitMQMethod('user_super_permission', user_super_permission),
     ]
     asyncio.ensure_future(rabbit_mq.connect(event_loop, methods))
 

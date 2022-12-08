@@ -36,7 +36,8 @@ class Permissions(BaseConstant):
     MODERATOR = Permission(
         PermissionTypes.MODERATOR,
         [
-            PermissionActions.VIEW_ALL_PROFILES
+            PermissionActions.VIEW_ALL_PROFILES,
+            PermissionActions.VIEW_PROFILE
         ]
     )
 
@@ -44,7 +45,8 @@ class Permissions(BaseConstant):
         PermissionTypes.ADMINISTRATOR,
         [
             PermissionActions.VIEW_ALL_PROFILES,
-            PermissionActions.ASSIGN_ADMINISTRATOR
+            PermissionActions.ASSIGN_ADMINISTRATOR,
+            PermissionActions.VIEW_PROFILE
         ]
     )
 

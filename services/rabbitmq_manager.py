@@ -101,19 +101,19 @@ class RabbitMQ:
         if method is None:
             return
 
-        try:
-            result = await method(message)
-            result_message = {
-                'status': True,
-                'answer': result,
-                'message_id': message.message_id
-            }
-        except BaseException as exception:
-            result_message = {
-                'status': False,
-                'answer': str(exception),
-                'message_id': message.message_id
-            }
+        # try:
+        result = await method(message)
+        result_message = {
+            'status': True,
+            'answer': result,
+            'message_id': message.message_id
+        }
+        # except BaseException as exception:
+        #     result_message = {
+        #         'status': False,
+        #         'answer': str(exception),
+        #         'message_id': message.message_id
+        #     }
 
         if message.reply_to is not None:
             result_message = json.dumps(result_message).encode('utf-8')

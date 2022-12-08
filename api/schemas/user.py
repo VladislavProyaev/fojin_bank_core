@@ -9,6 +9,11 @@ class User(BaseModel):
     password: str
 
 
+class TransferUser(BaseModel):
+    name: str
+    surname: str
+
+
 class UserCreate(BaseModel):
     name: str
     surname: str
